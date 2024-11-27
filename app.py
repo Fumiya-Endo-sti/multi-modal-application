@@ -92,7 +92,7 @@ if st.button("Send"):
                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
                 ]}
             ]
-        if uploaded_video is not None:
+        elif uploaded_video is not None:
             base64Frames = extract_frames(uploaded_video.read())
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
@@ -110,8 +110,7 @@ if st.button("Send"):
         # API呼び出し
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=messages,
-            max_tokens=500
+            messages=messages
         )
         # レスポンスを表示
         assistant_response = response.choices[0].message.content
