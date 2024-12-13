@@ -23,25 +23,22 @@ client = AzureOpenAI(
 st.title("マルチモーダルチャットアシスタント")
 st.write("テスト、画像、動画を扱えるマルチモーダルチャットアプリケーション")
 
-# ユーザー入力
+# ユーザー入力欄を作成
 user_input = st.text_input("あなた : ", "")
 
-# 画像アップロードとOCR機能
+# 画像をbase64にエンコードする
 def encode_image(image):
     return base64.b64encode(image.read()).decode("utf-8")
 
-uploaded_file = st.file_uploader("画像を選択", type=["jpg", "jpeg", "png"])
+# 画像入力欄を作成
+uploaded_image = st.file_uploader("画像を選択", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    base64_image = encode_image(uploaded_file)
-    user_input = "この画像を説明してください:"
 
-# 動画アップロード
+# 動画をフレームに分割する
 def extract_frames(video_bytes):
     with tempfile.NamedTemporaryFile(delete=False) as temp_video_file:
         temp_video_file.write(video_bytes)
         temp_video_file_path = temp_video_file.name
-
     video = cv2.VideoCapture(temp_video_file_path)
     base64Frames = []
     while video.isOpened():
@@ -50,41 +47,32 @@ def extract_frames(video_bytes):
             break
         _, buffer = cv2.imencode(".jpg", frame)
         base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-
     video.release()
     print(len(base64Frames), "frames read.")
     return base64Frames
 
-def calculate_token_count(base64_frames):
-    # 1トークンあたりの平均バイト数を考慮して計算
-    average_bytes_per_token = 4
-    total_bytes = sum(len(frame) for frame in base64_frames)
-    return total_bytes // average_bytes_per_token
+# 動画入力欄を作成
+uploaded_video = st.file_uploader("動画を選択", type=["mp4"])
 
+# 一リクエストあたりに使用するトークン数の推定を出す
 def calculate_map_token_count(base64_frames):
     enc = tiktoken.encoding_for_model("gpt-4o")
     total_tokens = sum(len(enc.encode(frame)) for frame in base64_frames[0::200])
     return total_tokens
 
-uploaded_video = st.file_uploader("動画を選択", type=["mp4"])
 
-if uploaded_video is not None:
-    user_input = "この動画を説明してください:"
-
-
-if st.button("Video"):
+# ローカルでトークン数の推定を行う
+if st.button("トークン数の推定"):
     base64Frames = extract_frames(uploaded_video.read())
-    token_count = calculate_token_count(base64Frames)
     map_token_count = calculate_map_token_count(base64Frames)
-    st.write(f"推定トークン数: {token_count}")
     st.write(f"map関数での推定トークン数: {map_token_count}")
-    print(f"推定トークン数: {token_count}")
     print(f"map関数での推定トークン数: {map_token_count}")
 
-# AOAIとの接続
-if st.button("Send"):
+# AOAIへリクエストを送る
+if st.button("送信"):
     if user_input:
-        if uploaded_file is not None:
+        if uploaded_image is not None:
+            base64_image = encode_image(uploaded_image)
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
                 {"role": "user", "content": [
