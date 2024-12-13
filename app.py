@@ -4,6 +4,7 @@ import tempfile
 
 import cv2
 import streamlit as st
+import tiktoken
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 
@@ -61,10 +62,9 @@ def calculate_token_count(base64_frames):
     return total_bytes // average_bytes_per_token
 
 def calculate_map_token_count(base64_frames):
-    # 1トークンあたりの平均バイト数を考慮して計算
-    average_bytes_per_token = 4
-    total_bytes = sum(len(frame) for frame in base64_frames[0::200])
-    return total_bytes // average_bytes_per_token
+    enc = tiktoken.encoding_for_model("gpt-4o")
+    total_tokens = sum(len(enc.encode(frame)) for frame in base64_frames[0::200])
+    return total_tokens
 
 uploaded_video = st.file_uploader("動画を選択", type=["mp4"])
 
@@ -97,10 +97,11 @@ if st.button("Send"):
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
                 {"role": "user", "content": [
-                    "These are frames from a video that I want to upload. Generate a compelling description that I can upload along with the video.",
+                    {"type": "text", "text": "These are frames from a video that I want to upload. Generate a compelling description that I can upload along with the video."},
                     *map(lambda x: {"image": x, "resize": 240}, base64Frames[0::200]),
                 ]}
             ]
+            print(messages)
         else:
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
