@@ -40,16 +40,16 @@ def extract_frames(video_bytes):
         temp_video_file.write(video_bytes)
         temp_video_file_path = temp_video_file.name
     video = cv2.VideoCapture(temp_video_file_path)
-    base64Frames = []
+    base64_frames = []
     while video.isOpened():
         success, frame = video.read()
         if not success:
             break
         _, buffer = cv2.imencode(".jpg", frame)
-        base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
+        base64_frames.append(base64.b64encode(buffer).decode("utf-8"))
     video.release()
-    print(len(base64Frames), "frames read.")
-    return base64Frames
+    print(len(base64_frames), "frames read.")
+    return base64_frames
 
 # 動画入力欄を作成
 uploaded_video = st.file_uploader("動画を選択", type=["mp4"])
@@ -63,15 +63,17 @@ def calculate_map_token_count(base64_frames):
 
 # ローカルでトークン数の推定を行う
 if st.button("トークン数の推定"):
-    base64Frames = extract_frames(uploaded_video.read())
-    map_token_count = calculate_map_token_count(base64Frames)
+    base64_frames = extract_frames(uploaded_video.read())
+    map_token_count = calculate_map_token_count(base64_frames)
     st.write(f"map関数での推定トークン数: {map_token_count}")
     print(f"map関数での推定トークン数: {map_token_count}")
 
 # AOAIへリクエストを送る
 if st.button("送信"):
-    if user_input:
+    if user_input or uploaded_image or uploaded_video:
         if uploaded_image is not None:
+            if user_input is None:
+                user_input = "この画像を説明してください"
             base64_image = encode_image(uploaded_image)
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
@@ -81,12 +83,14 @@ if st.button("送信"):
                 ]}
             ]
         elif uploaded_video is not None:
-            base64Frames = extract_frames(uploaded_video.read())
+            if user_input is None:
+                user_input = "この動画を説明してください"
+            base64_frames = extract_frames(uploaded_video.read())
             messages = [
                 {"role": "system", "content": "あなたは画像やテキストにも対応したチャットアシスタントです。すべての質問に日本語で返答してください。"},
                 {"role": "user", "content": [
-                    {"type": "text", "text": "These are frames from a video that I want to upload. Generate a compelling description that I can upload along with the video."},
-                    *map(lambda x: {"image": x, "resize": 240}, base64Frames[0::200]),
+                    {"type": "text", "text":  user_input},
+                    *map(lambda x: {"image": x, "resize": 240}, base64_frames[0::200]),
                 ]}
             ]
             print(messages)
@@ -101,6 +105,7 @@ if st.button("送信"):
             model="gpt-4o",
             messages=messages
         )
+
         # レスポンスを表示
         assistant_response = response.choices[0].message.content
         st.markdown("**アシスタント :**")
