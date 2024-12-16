@@ -20,8 +20,8 @@ client = AzureOpenAI(
 )
 
 # Streamlitの設定
-st.title("マルチモーダルチャットアシスタント")
-st.write("テスト、画像、動画を扱えるマルチモーダルチャットアプリケーション")
+st.title("マルチモーダルアプリケーション")
+st.write("テキスト、画像、動画を扱えるマルチモーダルアプリケーション")
 
 # ユーザー入力欄を作成
 user_input = st.text_input("あなた : ", "")
